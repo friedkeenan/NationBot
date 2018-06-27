@@ -1,6 +1,6 @@
 # NationBot
 
-This script runs a bot that runs a towny nation as if it were a company. You can buy and sell shares among fellow nation members, and your voting power is determined by how many shares you have. It was created to be used specifically with [AvatarMC](https://avatarmc.com), but it should work for any towny server with some slight modifications.
+This script runs a bot that runs a towny nation as if it were a company. You can buy and sell shares among fellow nation members, and your voting power is determined by how many shares you have. It was created to be used specifically with [AvatarMC](https://www.avatarmc.com), but it should work for any towny server with some slight modifications.
 
 # How to use:
 
