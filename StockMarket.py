@@ -192,8 +192,6 @@ class StockMarket:
 					self.towns[self.towny["name"]]["res"].append(r.strip(" "))
 					n+=1
 			self.towns[self.towny["name"]].pop("num")
-			if not nation:
-				self.towns.pop(self.towny["name"])
 			self.towny["name"]=""
 			self.towny["town"]=False
 			del n
