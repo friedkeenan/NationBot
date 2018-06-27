@@ -2,7 +2,7 @@
 
 This script runs a bot that runs a towny nation as if it were a company. You can buy and sell shares among fellow nation members, and your voting power is determined by how many shares you have. It was created to be used specifically with [AvatarMC](https://www.avatarmc.com), but it should work for any towny server with some slight modifications.
 
-# How to use:
+# How to use
 
 This script should run fine on any OS where you can execute a file with ./file (it's trivial to make it work on Windows (look for the os.execv() statements), but I run Linux so I don't care enough). It also requires the [pyCraft library](https://github.com/ammaraskar/pycraft). Most everything will work except for the **restart** command and the server restart logic. It should create the folders Storage and ChatLogs on the first run.
 
@@ -12,7 +12,7 @@ It receives commands through private messages, and commands can be separated wit
 
 # Commands
 
-**Admin only commands**:
+**Admin only commands**
 - say [message]
   - Will send the message to chat
 - stop
@@ -43,6 +43,7 @@ It receives commands through private messages, and commands can be separated wit
     - Accepts the deal the sender had with the seller
   - deny [seller]
     - Denies the deal the sender had with the seller
+    
 **Commands for everyone**
 - kinkshame
   - Will kinkshame the sender
