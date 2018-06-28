@@ -4,7 +4,7 @@ This script runs a bot that runs a towny nation as if it were a company. You can
 
 # How to use
 
-This script should run fine on any OS where you can execute a file with ./file (it's trivial to make it work on Windows (look for the os.execv() statements), but I run Linux so I don't care enough). It also requires the [pyCraft library](https://github.com/ammaraskar/pycraft). Most everything will work except for the **restart** command and the server restart logic. It should create the folders Storage and ChatLogs on the first run.
+This script should run fine on any OS where you can execute a file with ./file (it's trivial to make it work on Windows (look for the os.execv() statements), but I run Linux so I don't care enough). If you use Windows, most everything will work except for the **restart** command and the server restart logic. It also requires the [pyCraft library](https://github.com/ammaraskar/pycraft). It should create the folders Storage and ChatLogs on the first run.
 
 To run the script, simply fill in the appropriate information into config.py and run nation.py. If it fails to connect, it will retry every five seconds until it succeeds. It will run until the admin gives it the **stop** command or you tell it to stop through some other means. Some errors might happen if there are 0 shares in total, so just modify Storage/members.json to put some shares into circulation.
 
