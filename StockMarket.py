@@ -24,6 +24,10 @@ class StockMarket:
 		if os.path.exists(direct+"/towns.json"):
 			with open(direct+"/towns.json") as f:
 				self.towns=json.loads(f.read())
+		self.last_update=0
+		if os.path.exists(direct+"/last_update.txt"):
+			with open(direct+"/last_update.txt") as f:
+				self.last_update=float(f.read())
 		self.towny={"towny":False,"name":"","player":False,"town":False,"nation":False}
 		if not os.path.exists(direct):
 			os.mkdir(direct)
@@ -58,13 +62,16 @@ class StockMarket:
 	def rm_deal(self,deal):
 		self.deals.remove(deal)
 	def transfer_shares(self,amount,buy,sell):
-		if not type(amount)==int:
-			raise TypeError("Amount of shares must be an integer")
 		if self.members[sell]["shares"]<amount:
 			raise Exception("Not enough shares")
 		self.members[sell]["shares"]-=amount
 		self.members[buy]["shares"]+=amount
 		self.save_members(self.direct+"/members.json")
+	def save_update(self,file=None):
+		if file==None:
+			file=self.direct+"/last_update.txt"
+		with open(file,"w") as f:
+			f.write(str(self.last_update))
 	def save_votes(self,file=None):
 		if file==None:
 			file=self.direct+"/votes.json"
@@ -98,18 +105,19 @@ class StockMarket:
 		self.process_town(packet)
 		self.process_player(packet)
 	def process_chat(self,packet): #Processes chat packets into text
+		if packet.position==2:
+			return ""
+		text=json.loads(packet.json_data)
+		t=""
 		try:
-			text=json.loads(packet.json_data)["extra"]
-		except:
-			return ''
-		t=''
-		for j in text:
-			if j["text"]!=' ' and j["text"]!='' and j["text"]!="\x15f\x157[ \x15a273.0\x15f\x157 / \x15c273.0 ?\x157 ]":
+			t=text["text"]
+			text=text["extra"]
+			for j in text:
 				t+=j["text"]
-		if t and "§" not in t:
-			return t
-		return ''
-	def process_towny(self,packet): #Determines if bot is about to see player or resident info
+		except KeyError as e:
+			pass
+		return t
+	def process_towny(self,packet): #Determines if bot is about to see player or nation info
 		t=self.process_chat(packet)
 		if t.startswith(".oOo."):
 			self.towny["towny"]=True #When towny is true, wait for next line to determine whether town or player
@@ -127,18 +135,28 @@ class StockMarket:
 		if t.startswith("Registered: "): #First line of player info
 			self.towny["name"]=self.towny["name"].split(" (",1)[0].split()[-1]
 			if self.towny["name"] in self.members: #If player already registered, stop the function
-				self.towny["name"]=""
-				self.towny["player"]=False
 				return
 			self.members[self.towny["name"]]={"shares":0}
 		elif t.startswith("UUID: "):
 			self.members[self.towny["name"]]["uuid"]=t[6:]
 		elif t.startswith("Town: "):
 			n=t[6:].split(" (",1)[0]
-			if n not in self.towns: #If town isn't registered, player isn't part of nation, so stop the function
+			if n not in self.towns: #If town isn't registered, player isn't part of nation, so stop the function after removing name from all towns
+				for name in self.towns:
+					try:
+						self.towns[name]["res"].remove(self.towny["name"])
+						share_dist=self.members[self.towny["name"]]["shares"]/(len(self.members)-1)
+						for m in self.members: #Redistribute their shares evenly
+							if m==self.towny["name"]:
+								continue
+							self.members[m]["shares"]+=share_dist
+					except ValueError:
+						continue
+				self.save_towns()
 				self.members.pop(self.towny["name"])
 				self.towny["name"]=""
 				self.towny["player"]=False
+				self.save_members()
 				return
 			if self.towny["name"] not in self.towns[n]["res"]: #If player is in a registered town but isn't included in our records as being in that town, update our records
 				self.towns[n]["res"].append(self.towny["name"])
@@ -161,7 +179,8 @@ class StockMarket:
 		t=self.process_chat(packet)
 		if t.startswith("Board: "): #First line of town info
 			self.towny["name"]=self.towny["name"].split(" (",1)[0]
-			self.towns[self.towny["name"]]={}
+			if self.towny["name"] not in self.towns:
+				self.towns[self.towny["name"]]={}
 		if t.startswith("UUID: "):
 			self.towns[self.towny["name"]]["uuid"]=t[6:]
 		elif t.startswith("Mayor: "):
@@ -171,14 +190,20 @@ class StockMarket:
 				self.towns.pop(self.towny["name"])
 				self.towny["name"]=""
 				self.towny["town"]=False
+				self.save_towns()
 		elif t.startswith("Residents ["): #Try to record as many residents as we can see
-			self.towns[self.towny["name"]]["res"]=[]
+			try:
+				self.towns[self.towny["name"]]["res"]
+			except KeyError: #have to create the "res" list if town hasn't been registered yet
+				self.towns[self.towny["name"]]["res"]=[]
 			self.towns[self.towny["name"]]["num"]=int(t.split("[",1)[1].split("]",1)[0])
 			global n #Use this variable to check that we're almost done getting info
 			n=0
 			for r in t.split("]: ",1)[1].split(", "):
 				if r and n<self.towns[self.towny["name"]]["num"]:
-					self.towns[self.towny["name"]]["res"].append(r.split()[-1])
+					res=r.split()[-1]
+					if res not in self.towns[self.towny["name"]]["res"]: #To avoid duplicates
+						self.towns[self.towny["name"]]["res"].append(res)
 					n+=1
 		else:
 			try:
@@ -189,7 +214,9 @@ class StockMarket:
 				if n<self.towns[self.towny["name"]]["num"] and r!="and more... ":
 					if not r:
 						return
-					self.towns[self.towny["name"]]["res"].append(r.strip(" "))
+					res=r.strip(" ")
+					if res not in self.towns[self.towny["name"]]["res"]: #To avoid duplicates
+						self.towns[self.towny["name"]]["res"].append(res)
 					n+=1
 			self.towns[self.towny["name"]].pop("num")
 			self.towny["name"]=""
