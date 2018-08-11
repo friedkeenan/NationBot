@@ -24,7 +24,7 @@ class StockMarket:
 		if os.path.exists(direct+"/towns.json"):
 			with open(direct+"/towns.json") as f:
 				self.towns=json.loads(f.read())
-		self.last_update=0
+		self.last_update=time.time()
 		if os.path.exists(direct+"/last_update.txt"):
 			with open(direct+"/last_update.txt") as f:
 				self.last_update=float(f.read())
