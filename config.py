@@ -5,3 +5,6 @@ server_version="1.9.2"
 admin="admin"
 vote_wait=3*24*60*60 #Time between vote beginning and ending in seconds
 vote_die=4*24*60*60 #Time between vote ending and vote being gone forever and ever amen
+do_update=6*60*60 #Time between updates
+debug=False #Determines whether to see all incoming/outgoing packets
+ignore_ids=["0x3e"] #List of packets for the in_out function to ignore
