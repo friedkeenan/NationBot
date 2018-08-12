@@ -16,9 +16,12 @@ class SlotType(Type):
 		id=Short.read(file_object)
 		if id==-1:
 			return Slot()
-		count=Byte.read(file_object)
-		dmg=Short.read(file_object)
-		NBT=nbt.NBTFile(buffer=file_object.bytes)
+		count=Byte.read(file_object.bytes)
+		dmg=Short.read(file_object.bytes)
+		try:
+			NBT=nbt.NBTFile(buffer=file_object.bytes)
+		except:
+			NBT=None
 		return Slot(id,count,dmg,NBT)
 	@staticmethod
 	def send(value,socket):
