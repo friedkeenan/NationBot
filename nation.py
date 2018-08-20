@@ -22,7 +22,7 @@ def write_msg(msg,whisper=True): #Tiny little function that writes a ChatPacket 
 	p.message=msg
 	connection.write_packet(p)
 def process_chat(packet):
-	global stop_loop,connection,restart,update
+	global stop_loop,connection,restart
 	st.process(packet)
 	t=st.process_chat(packet)
 	if t: #If there's anything worthwhile in t
@@ -59,7 +59,7 @@ def process_chat(packet):
 				elif c[0]=="reconnect" and sender==admin:
 					connection.disconnect()
 				elif c[0]=="update" and sender==admin: #Will update all the town and member info
-					update=[list(st.towns.keys())[0],-1]
+					st.update=[list(st.towns.keys())[0],-1]
 				elif c[0]=="tellraw" and sender==admin: #Emulates the /tellraw command
 					p=ChatMessagePacket()
 					p.json_data=c[1]
@@ -160,8 +160,8 @@ def process_chat(packet):
 					elif c[1]=="info":
 						try:
 							votes={} #Join both st.votes and st.votes_done so that players can get info on both
-							votes.update(st.votes)
-							votes.update(st.votes_done)
+							votes.st.update(st.votes)
+							votes.st.update(st.votes_done)
 							if c[2] in votes:
 								time_left=str(dt.timedelta(seconds=abs(int(votes[c[2]]["time"]+vote_wait-time.time()))))
 								if c[2] in st.votes_done: #Timedelta messes up when seconds are negative, which would be when a vote is finished
@@ -229,7 +229,6 @@ def process_chat(packet):
 			f.write("["+str(time.time())+"] "+t+"\n")
 		print(t)
 def keep_alive(packet): #Is called every 30ish seconds
-	global update
 	rm_votes=[] #Need this because you can't delete a key from a dictionary while it's being used in a for loop
 	for v in st.votes:
 		if st.votes[v]["time"]+vote_wait<=time.time(): #If the time has come for the vote to be finished
@@ -243,23 +242,26 @@ def keep_alive(packet): #Is called every 30ish seconds
 			rm_votes.append(v)
 	for v in rm_votes:
 		st.rm_vote_done(v)
-	if time.time()>=st.last_update+do_update: #If enough time has passed to do another update
-		update=[list(st.towns.keys())[0],-1]
+	if time.time()>=st.last_update+do_update: #If enough time has passed to do another st.update
+		st.update=[list(st.towns.keys())[0],-1]
 		st.last_update=time.time()
 		st.save_update()
-	if update: #If update isn't None
-		if update[1]==-1:
-			write_msg("/town "+update[0].replace(" ","_"),False)
+	if st.update: #If st.update isn't None
+		if st.update[1]==-1:
+			write_msg("/town "+st.update[0].replace(" ","_"),False)
 		else:
-			write_msg("/res "+st.towns[update[0]]["res"][update[1]],False)
-		if update[1]<len(st.towns[update[0]]["res"])-1:
-			update[1]+=1
-		else:
-			update[1]=-1
 			try:
-				update[0]=list(st.towns.keys())[list(st.towns.keys()).index(update[0])+1]
+				write_msg("/res "+st.towns[st.update[0]]["res"][st.update[1]],False)
+			except KeyError:
+				st.update[0]
+		if st.update[1]<len(st.towns[st.update[0]]["res"])-1:
+			st.update[1]+=1
+		else:
+			st.update[1]=-1
+			try:
+				st.update[0]=list(st.towns.keys())[list(st.towns.keys()).index(st.update[0])+1]
 			except IndexError:
-				update=None
+				st.update=None
 def respawn(packet):
 	if packet.health<=0:
 		p=ClientStatusPacket()
@@ -269,7 +271,7 @@ def set_slot(packet):
 	global restart
 	if packet.window_id==2 and packet.slot==2: #If this is the second window opened and the third slot in that window (which will be a character slot)
 		if restart:
-			while time.time()<=restart+15: #Can't use time.time() because that causes a time out
+			while time.time()<=restart+15.25: #Can't use time.time() because that causes a time out
 				pass
 			restart=None
 		p=ClickWindowPacket()
@@ -324,7 +326,6 @@ print("Connected to server\n\n")
 st=StockMarket("Kraotum")
 stop_loop=False
 restart=None
-update=None
 while not stop_loop: #There needs to be something happening in this loop or else it'll time out once it joins lobby
 	time.sleep(5)
 	if not connection.connected: #If for whatever reason we get unknowingly disconnected, get a new connection

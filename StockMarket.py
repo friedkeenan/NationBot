@@ -7,6 +7,7 @@ class StockMarket:
 	def __init__(self,nation,direct="Storage"):
 		self.nation=nation
 		self.direct=direct
+		self.update=None
 		self.deals=[] #Won't survive if script is reloaded because they should be finished quickly
 		self.votes={}
 		if os.path.exists(direct+"/votes.json"):
@@ -187,6 +188,18 @@ class StockMarket:
 			self.towns[self.towny["name"]]["mayor"]=t[7:].split()[1]
 		elif t.startswith("Nation: "):
 			if t.split()[1]!=self.nation: #If town isn't in our nation, reset self.towny and stop the function
+				if self.towny["name"] in self.towns:
+					if self.update:
+						self.update[1]=-1
+						try:
+							self.update[0]=list(self.towns.keys())[list(self.towns.keys()).index(self.update[0])+1]
+						except IndexError:
+							self.update=None
+					for m in self.towns[self.towny["name"]]["res"]:
+						try:
+							self.members.pop(m)
+						except ValueError:
+							continue
 				self.towns.pop(self.towny["name"])
 				self.towny["name"]=""
 				self.towny["town"]=False
