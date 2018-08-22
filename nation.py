@@ -5,11 +5,11 @@ import sys
 import time
 import os
 import datetime as dt
-from minecraft import authentication
+from minecraft import authentication, SUPPORTED_MINECRAFT_VERSIONS
 from minecraft.networking.packets import * #Give me all those packets daddy
 from minecraft.networking.packets.clientbound.play import UpdateHealthPacket
 from minecraft.networking.packets.serverbound.play import ClientStatusPacket
-from minecraft.networking.connection import Connection
+from minecraft.networking.connection import Connection, PlayingStatusReactor
 from minecraft.exceptions import YggdrasilError
 from CustomPackets import *
 from config import *
@@ -271,7 +271,7 @@ def set_slot(packet):
 	global restart
 	if packet.window_id==2 and packet.slot==2: #If this is the second window opened and the third slot in that window (which will be a character slot)
 		if restart:
-			while time.time()<=restart+15.25: #Can't use time.time() because that causes a time out
+			while time.time()<=restart+15.45: #Can't use time.time() because that causes a time out
 				pass
 			restart=None
 		p=ClickWindowPacket()
@@ -310,6 +310,7 @@ def new_connection():
 			time.sleep(5)
 			print("Retrying...")
 	c=Connection(server_ip,auth_token=m,initial_version=server_version)
+	c.allowed_proto_versions={SUPPORTED_MINECRAFT_VERSIONS[server_version]}
 	c.register_packet_listener(keep_alive,KeepAlivePacketClientbound)
 	c.register_packet_listener(process_chat,ChatMessagePacket,early=True)
 	c.register_packet_listener(respawn,UpdateHealthPacket)
@@ -318,6 +319,16 @@ def new_connection():
 		c.register_packet_listener(in_out,Packet,outgoing=True)
 		c.register_packet_listener(lambda x:in_out(x,"IN"),Packet)
 	return c
+	
+#We have to decorate the PlayingStatusReactor.handle_status method to hack our way into treating "393 (BungeeCord 1.8.x-1.13.x)" as a supported protocol
+def allow_string_proto(func): #If the protocol version is a string, split it and convert the first element into an int
+	def wrap(func,self,status):
+		if type(status["version"]["protocol"])==str:
+			status["version"]["protocol"]=int(status["version"]["protocol"].split()[0])
+		func(self,status)
+	return lambda x,y:wrap(func,x,y)
+PlayingStatusReactor.handle_status=allow_string_proto(PlayingStatusReactor.handle_status)
+
 if not os.path.exists("ChatLogs"):
 	os.mkdir("ChatLogs")
 connection=new_connection()
