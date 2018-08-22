@@ -195,11 +195,17 @@ class StockMarket:
 							self.update[0]=list(self.towns.keys())[list(self.towns.keys()).index(self.update[0])+1]
 						except IndexError:
 							self.update=None
+					share_dist=0
 					for m in self.towns[self.towny["name"]]["res"]:
 						try:
+							share_dist+=self.members[m]["shares"]
 							self.members.pop(m)
-						except ValueError:
+						except KeyError:
 							continue
+					share_dist/=len(self.members)
+					for m in self.members:
+						self.members[m]["shares"]+=share_dist
+					self.save_members()
 				self.towns.pop(self.towny["name"])
 				self.towny["name"]=""
 				self.towny["town"]=False
