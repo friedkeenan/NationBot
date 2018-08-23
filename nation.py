@@ -30,7 +30,7 @@ def process_chat(packet):
 			write_msg("/limbo",False)
 			restart=time.time()
 		elif t.startswith("Received "): #If the money isn't for a deal, deposit it into the nation bank, otherwise finish the deal
-			amount=float(t.split(" ",1)[1].split("¥")[0])
+			amount=float(t.split(" ",1)[1].split("¥")[0].replace(",",""))
 			sender=t.split("from ")[-1]
 			matched=False
 			for d in st.deals: #Find any deals with sender as buyer with the correct amount of money
