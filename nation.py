@@ -28,7 +28,7 @@ def process_chat(packet):
 	if t: #If there's anything worthwhile in t
 		if t=="Server will restart in 15 seconds": #Escape to limbo and then wait 15 seconds before choosing a character
 			write_msg("/limbo",False)
-			restart=time.time()
+			restart=[time.time(),SetSlotPacket()]
 		elif t.startswith("Received "): #If the money isn't for a deal, deposit it into the nation bank, otherwise finish the deal
 			amount=float(t.split(" ",1)[1].split("¥")[0].replace(",",""))
 			sender=t.split("from ")[-1]
@@ -54,7 +54,7 @@ def process_chat(packet):
 					stop_loop=True
 				elif c[0]=="restart" and sender==admin:
 					print("Restarting...\n\n")
-					time.sleep(4)
+					time.sleep(5)
 					os.execv(__file__,sys.argv) #This probably only works in environments where you can do ./file
 				elif c[0]=="reconnect" and sender==admin:
 					connection.disconnect()
@@ -160,16 +160,18 @@ def process_chat(packet):
 					elif c[1]=="info":
 						try:
 							votes={} #Join both st.votes and st.votes_done so that players can get info on both
-							votes.st.update(st.votes)
-							votes.st.update(st.votes_done)
+							votes.update(st.votes)
+							votes.update(st.votes_done)
 							if c[2] in votes:
 								time_left=str(dt.timedelta(seconds=abs(int(votes[c[2]]["time"]+vote_wait-time.time()))))
 								if c[2] in st.votes_done: #Timedelta messes up when seconds are negative, which would be when a vote is finished
 									time_left="-"+time_left
-								write_msg("Proposition: "+votes[c[2]]["proposition"]+"; For: "+str(votes[c[2]]["yes"])+"; Against: "+str(votes[c[2]]["no"])+"; Time left: "+time_left)
+								results=st.get_vote_nums(c[2])
+								write_msg("Proposition: "+votes[c[2]]["proposition"]+"; For: "+str(results[0])+"; Against: "+str(results[1])+"; Time left: "+time_left)
 							else:
 								write_msg("There is no vote named '"+c[2]+"'")
-						except:
+						except Exception as e:
+							print(e)
 							write_msg("Usage: vote info [vote name]")
 					else:
 						write_msg("Usage: vote [make/vote/list/info] [etc]")
@@ -196,31 +198,38 @@ def process_chat(packet):
 						except:
 							write_msg("Usage: deal sell [buyer] [shares] [money]")
 					elif c[1]=="accept":
-						matched=False
-						money=0
-						shares=0
-						for d in st.deals: #Find matching deal
-							if d["buy"]==sender and d["sell"]==c[2]:
-								matched=True
-								d["accepted"]=True
-								money=d["money"]
-								shares=d["amount"]
-								break
-						if matched:
-							write_msg("/msg "+c[2]+" "+sender+" has accepted your deal. Please pay me "+str(money)+"¥ now to sell them "+str(shares)+" shares",False)
-						else:
-							write_msg("You have no deals with "+c[2])
+						try:
+							matched=False
+							money=0
+							shares=0
+							for d in st.deals: #Find matching deal
+								if d["buy"]==sender and d["sell"]==c[2]:
+									matched=True
+									d["accepted"]=True
+									money=d["money"]
+									shares=d["amount"]
+									break
+							if matched:
+								write_msg("/msg "+c[2]+" "+sender+" has accepted your deal. Please wait for them to pay me "+str(money)+"¥ to sell them "+str(shares)+" shares",False)
+								write_msg("Please pay me "+str(money)+"¥ to buy "+str(shares)+" shares from "+c[2])
+							else:
+								write_msg("You have no deals with "+c[2])
+						except:
+							write_msg("Usage: deal accept [seller]")
 					elif c[1]=="deny":
-						matched=False
-						for d in st.deals: #Find matching deal
-							if d["buy"]==sender and d["sell"]==c[2]:
-								matched=True
-								st.rm_deal(d)
-								break
-						if matched:
-							write_msg("/msg "+c[2]+" "+sender+" has denied your deal",False)
-						else:
-							write_msg("You have no deals with "+c[2])
+						try:
+							matched=False
+							for d in st.deals: #Find matching deal
+								if d["buy"]==sender and d["sell"]==c[2]:
+									matched=True
+									st.rm_deal(d)
+									break
+							if matched:
+								write_msg("/msg "+c[2]+" "+sender+" has denied your deal",False)
+							else:
+								write_msg("You have no deals with "+c[2])
+						except:
+							write_msg("Usage: deal deny [seller]")
 					else:
 						write_msg("Usage: deal [sell/accept/deny] [etc]")
 				else:
@@ -229,6 +238,18 @@ def process_chat(packet):
 			f.write("["+str(time.time())+"] "+t+"\n")
 		print(t)
 def keep_alive(packet): #Is called every 30ish seconds
+	global restart
+	if restart:
+		if time.time()>=restart[0]+16:
+			p=ClickWindowPacket()
+			p.window_id=restart[1].window_id
+			p.slot=restart[1].slot
+			p.button=0
+			p.action_number=1
+			p.mode=0
+			p.clicked=restart[1].slot_data
+			connection.write_packet(p)
+			restart=None
 	rm_votes=[] #Need this because you can't delete a key from a dictionary while it's being used in a for loop
 	for v in st.votes:
 		if st.votes[v]["time"]+vote_wait<=time.time(): #If the time has come for the vote to be finished
@@ -268,12 +289,10 @@ def respawn(packet):
 		p.action_id=0
 		connection.write_packet(p)
 def set_slot(packet):
-	global restart
 	if packet.window_id==2 and packet.slot==2: #If this is the second window opened and the third slot in that window (which will be a character slot)
 		if restart:
-			while time.time()<=restart+15.45: #Can't use time.time() because that causes a time out
-				pass
-			restart=None
+			restart[1]=packet
+			return
 		p=ClickWindowPacket()
 		p.window_id=packet.window_id
 		p.slot=packet.slot

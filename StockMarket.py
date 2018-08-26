@@ -38,19 +38,32 @@ class StockMarket:
 		for i in self.members:
 			total+=self.members[i]["shares"]
 		return total
+	def get_vote_nums(self,name):
+		yes=0
+		no=0
+		if name in self.votes_done:
+			return (self.votes_done[name]["yes"],self.votes_done[name]["no"])
+		for m in self.votes[name]["voted"]:
+			if self.votes[name]["voted"][m]=="yes":
+				yes+=self.members[m]["shares"]
+			elif self.votes[name]["voted"][m]=="no":
+				no+=self.members[m]["shares"]
+		return (yes,no)
 	def add_vote(self,name,prop):
-		self.votes[name]={"proposition":prop,"yes":0,"no":0,"time":time.time(),"voted":[]}
+		self.votes[name]={"proposition":prop,"time":time.time(),"voted":{}}
 		self.save_votes()
 	def rm_vote(self,name):
 		self.votes.pop(name)
 		self.save_votes(self.direct+"/votes.json")
 	def vote(self,voter,name,stance):
-		self.votes[name][stance]+=self.members[voter]["shares"]
-		self.votes[name]["voted"].append(voter)
+		self.votes[name]["voted"][voter]=stance
 		self.save_votes()
 	def finish_vote(self,name):
+		results=self.get_vote_nums(name)
 		self.votes_done[name]=self.votes[name]
 		self.rm_vote(name)
+		self.votes_done[name]["yes"]=results[0]
+		self.votes_done[name]["no"]=results[1]
 		self.save_votes_done()
 	def rm_vote_done(self,name):
 		self.votes_done.pop(name)
